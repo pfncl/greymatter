@@ -59,7 +59,7 @@ function resolveImportPath(sourceFile, importTarget, projectDir) {
 // forceFiles: optional Set of project-relative paths to re-extract even if the hash is unchanged.
 // When null/undefined, behaves identically to the original scanProject (hash-based incremental).
 // extractorsDir: optional path to a custom extractors directory (used in tests).
-function extractFiles({ db, project, rootPath, forceFiles = null, extractorsDir, config }) {
+function extractFiles({ db, project, rootPath, forceFiles = null, forceAll = false, extractorsDir, config }) {
   if (config == null) {
     throw new Error('extractFiles: config is required (load via loadConfig() at integration boundary)');
   }
@@ -95,7 +95,7 @@ function extractFiles({ db, project, rootPath, forceFiles = null, extractorsDir,
     // First pass: insert nodes, build fileNodeMaps
     for (const absPath of files) {
       const relPath = path.relative(rootPath, absPath);
-      const forced = forceSet !== null && forceSet.has(relPath);
+      const forced = forceAll || (forceSet !== null && forceSet.has(relPath));
 
       // Defense in depth: never extract a forced-but-excluded file
       if (isExcluded(absPath, policy)) continue;
@@ -193,7 +193,20 @@ function extractFiles({ db, project, rootPath, forceFiles = null, extractorsDir,
         if (edge.type === 'imports') {
           // target is a relative path like './lib/utils'
           const resolved = resolveImportPath(relPath, edge.target, rootPath);
-          const candidates = [resolved, resolved + '.js', path.join(resolved, 'index.js')];
+          // TS node16/nodenext specifiers reference the EMITTED file ('./foo.js')
+          // while the on-disk source is foo.ts/.tsx — without the suffix swap every
+          // lookup misses and imports collapse into phantom .js stub nodes
+          // (empty imported_by across whole TS projects).
+          const candidates = [resolved];
+          const stem = resolved.replace(/\.(js|mjs|cjs)$/, '');
+          if (stem !== resolved) {
+            candidates.push(stem + '.ts', stem + '.tsx', stem + '.mts', stem + '.cts');
+          } else {
+            candidates.push(
+              resolved + '.js', resolved + '.ts', resolved + '.tsx',
+              path.join(resolved, 'index.js'), path.join(resolved, 'index.ts'), path.join(resolved, 'index.tsx')
+            );
+          }
 
           for (const candidate of candidates) {
             const targetMap = fileNodeMaps.get(candidate);
@@ -280,8 +293,8 @@ function extractFiles({ db, project, rootPath, forceFiles = null, extractorsDir,
   return result;
 }
 
-function scanProject(projectDir, projectName, graphDb, config) {
-  return extractFiles({ db: graphDb, project: projectName, rootPath: projectDir, config });
+function scanProject(projectDir, projectName, graphDb, config, { forceAll = false } = {}) {
+  return extractFiles({ db: graphDb, project: projectName, rootPath: projectDir, config, forceAll });
 }
 
 function discoverProjects(workspaceDir) {
@@ -451,6 +464,9 @@ function main() {
   const dbPath = flag('--db') || DEFAULT_DB;
   const memDbPath = flag('--memory-db') || DEFAULT_MEMORY_DB;
   const seedAliasesFlag = args.includes('--seed-aliases');
+  // --force is documented in README/docs since the beginning but was never
+  // wired into the CLI — hashes always short-circuited re-extraction.
+  const forceAll = args.includes('--force');
   const pairs = [];
 
   if (args.includes('--dir')) {
@@ -479,7 +495,7 @@ function main() {
 
   for (const { dir, name } of pairs) {
     process.stdout.write(`Scanning ${name} (${dir})...\n`);
-    const stats = scanProject(dir, name, db, config);
+    const stats = scanProject(dir, name, db, config, { forceAll });
     db.setProjectRoot(name, dir);
     process.stdout.write(`  ${stats.filesScanned} scanned, ${stats.filesSkipped} skipped, ${stats.nodesCreated} nodes, ${stats.edgesCreated} edges\n`);
     if (stats.labelsWritten > 0) {
