@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js'",
+            "command": "NODE_PATH=\"${CLAUDE_PLUGIN_DATA}/node_modules\" node '${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js'",
             "async": false
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit.js'"
+            "command": "NODE_PATH=\"${CLAUDE_PLUGIN_DATA}/node_modules\" node '${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit.js'"
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use.js'"
+            "command": "NODE_PATH=\"${CLAUDE_PLUGIN_DATA}/node_modules\" node '${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use.js'"
           }
         ]
       }
@@ -50,12 +50,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.js'",
+            "command": "NODE_PATH=\"${CLAUDE_PLUGIN_DATA}/node_modules\" node '${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.js'",
             "timeout": 10000
           },
           {
             "type": "command",
-            "command": "node '${CLAUDE_PLUGIN_ROOT}/hooks/blast-on-edit.js'",
+            "command": "NODE_PATH=\"${CLAUDE_PLUGIN_DATA}/node_modules\" node '${CLAUDE_PLUGIN_ROOT}/hooks/blast-on-edit.js'",
             "timeout": 5000
           }
         ]
