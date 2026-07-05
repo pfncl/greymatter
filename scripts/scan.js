@@ -55,6 +55,35 @@ function resolveImportPath(sourceFile, importTarget, projectDir) {
   return path.relative(projectDir, resolvedAbs);
 }
 
+// Path-alias import targets ($lib/x, @/x, ~/x) resolve against the importing
+// file's app root — the nearest ancestor dir (within the project) that has a
+// tsconfig.json or package.json, so monorepo apps/* packages resolve inside
+// their own app. Mapping conventions: $lib -> src/lib (SvelteKit/Astro
+// standard), @/ and ~/ -> src/. Returns null for non-alias targets.
+function resolveAliasTarget(sourceFile, importTarget, projectDir) {
+  let sub = null;
+  if (importTarget === '$lib') sub = 'src/lib';
+  else if (importTarget.startsWith('$lib/')) sub = 'src/lib/' + importTarget.slice(5);
+  else if (importTarget.startsWith('@/')) sub = 'src/' + importTarget.slice(2);
+  else if (importTarget.startsWith('~/')) sub = 'src/' + importTarget.slice(2);
+  if (sub == null) return null;
+
+  const rootAbs = path.resolve(projectDir);
+  let dirAbs = path.dirname(path.join(projectDir, sourceFile));
+  let appRootAbs = rootAbs;
+  while (true) {
+    if (fs.existsSync(path.join(dirAbs, 'tsconfig.json')) || fs.existsSync(path.join(dirAbs, 'package.json'))) {
+      appRootAbs = dirAbs;
+      break;
+    }
+    if (path.resolve(dirAbs) === rootAbs) break;
+    const parent = path.dirname(dirAbs);
+    if (parent === dirAbs) break;
+    dirAbs = parent;
+  }
+  return path.relative(projectDir, path.join(appRootAbs, sub));
+}
+
 // extractFiles — the core two-pass extraction engine.
 // forceFiles: optional Set of project-relative paths to re-extract even if the hash is unchanged.
 // When null/undefined, behaves identically to the original scanProject (hash-based incremental).
@@ -192,7 +221,8 @@ function extractFiles({ db, project, rootPath, forceFiles = null, forceAll = fal
 
         if (edge.type === 'imports') {
           // target is a relative path like './lib/utils'
-          const resolved = resolveImportPath(relPath, edge.target, rootPath);
+          const resolved = resolveAliasTarget(relPath, edge.target, rootPath)
+            ?? resolveImportPath(relPath, edge.target, rootPath);
           // TS node16/nodenext specifiers reference the EMITTED file ('./foo.js')
           // while the on-disk source is foo.ts/.tsx — without the suffix swap every
           // lookup misses and imports collapse into phantom .js stub nodes

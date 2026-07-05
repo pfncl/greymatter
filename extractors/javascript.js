@@ -41,10 +41,17 @@ function isBuiltin(mod) {
   return BUILTIN_MODULES.has(mod) || BUILTIN_MODULES.has(mod.split('/')[0]);
 }
 
+// Path-alias specifiers are project files behind a mapping, not npm packages —
+// emit them as edges; scan.js translates the prefix ($lib -> src/lib, @/ and
+// ~/ -> src/). SvelteKit virtuals ($app/, $env/) have no file — stay skipped.
+function isPathAlias(mod) {
+  return mod === '$lib' || mod.startsWith('$lib/') || mod.startsWith('@/') || mod.startsWith('~/');
+}
+
 function shouldSkipImport(mod) {
   // Skip builtins and npm packages (non-relative, non-builtin → npm; we skip those too)
-  // The plan says: skip builtins, skip npm packages; only keep relative imports
-  return !isRelative(mod);
+  // Keep relative imports and path aliases.
+  return !isRelative(mod) && !isPathAlias(mod);
 }
 
 // Strips string literals and single-line comments before brace counting

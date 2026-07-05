@@ -38,8 +38,16 @@ function isRelative(mod) {
   return mod.startsWith('.') || mod.startsWith('/');
 }
 
+// Path-alias specifiers are project files behind a mapping, not npm packages —
+// emit them as edges; scan.js translates the prefix ($lib -> src/lib, @/ and
+// ~/ -> src/). Other $-prefixed ids (SvelteKit virtuals $app/, $env/) stay
+// skipped — no file on disk.
+function isPathAlias(mod) {
+  return mod === '$lib' || mod.startsWith('$lib/') || mod.startsWith('@/') || mod.startsWith('~/');
+}
+
 function shouldSkipImport(mod) {
-  return !isRelative(mod);
+  return !isRelative(mod) && !isPathAlias(mod);
 }
 
 function extract(content, filePath, project) {

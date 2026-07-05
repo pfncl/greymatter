@@ -68,7 +68,8 @@ function extract(content, filePath, project) {
       const importMatch = trimmed.match(/^import\s+[\s\S]*?\s+from\s+['"]([^'"]+)['"]/);
       if (importMatch) {
         const mod = importMatch[1];
-        if ((mod.startsWith('.') || mod.startsWith('/')) && !seenImports.has(mod)) {
+        // Relative/absolute imports and path aliases ($lib, @/, ~/) become edges
+        if ((mod.startsWith('.') || mod.startsWith('/') || mod === '$lib' || mod.startsWith('$lib/') || mod.startsWith('@/') || mod.startsWith('~/')) && !seenImports.has(mod)) {
           seenImports.add(mod);
           edges.push({
             type: 'imports', category: 'structural',
