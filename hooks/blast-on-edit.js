@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // PostToolUse hook for Edit/Write/MultiEdit — runs greymatter blast-radius +
 // textual reference grep on the changed file and injects the result back into

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('../lib/resolve-deps');
 'use strict';
 
 // MCP read-only server for greymatter.

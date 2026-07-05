@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Pre-tool-use hook: fires before Edit/Write/MultiEdit/Bash.
 // Three responsibilities:

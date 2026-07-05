@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/resolve-deps');
 
 // Post-tool-use hook: fires after Edit/Write/MultiEdit.
 // Re-extracts the changed file into graph.db incrementally.

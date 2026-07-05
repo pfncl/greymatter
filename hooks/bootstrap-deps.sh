@@ -1,18 +1,27 @@
 #!/bin/bash
 # Staged dependency bootstrap — never let a failed npm install destroy a
-# working node_modules tree (a partial npm reify guts packages: dir stays,
-# package.json inside vanishes, and every hook + the MCP server dies on
-# "Cannot find module"). Install into .staging, verify the critical modules
-# actually load, then swap. On any failure the current tree stays intact and
-# the version marker stays stale, so the next session retries.
-#
-# Args: $1 = CLAUDE_PLUGIN_ROOT, $2 = CLAUDE_PLUGIN_DATA
+# working node_modules tree, and never depend on Claude Code env/placeholder
+# substitution (observed live: ${CLAUDE_PLUGIN_DATA} reaching processes
+# unexpanded). The script locates everything itself:
+#   ROOT = plugin dir (parent of this script's dir)
+#   DATA = $CLAUDE_PLUGIN_DATA when provided and expanded, else the canonical
+#          ~/.claude/plugins/data/greymatter-greymatter
+# Install goes into .staging, gets a load check, then swaps in. On any failure
+# the current tree stays intact and the marker stays stale (retry next session).
 set -u
-ROOT="${1:?usage: bootstrap-deps.sh <plugin-root> <plugin-data>}"
-DATA="${2:?usage: bootstrap-deps.sh <plugin-root> <plugin-data>}"
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DATA="${CLAUDE_PLUGIN_DATA:-}"
+case "$DATA" in ''|*'${'*) DATA="$HOME/.claude/plugins/data/greymatter-greymatter" ;; esac
 
 mkdir -p "$DATA"
 diff -q "$ROOT/package.json" "$DATA/package.json" >/dev/null 2>&1 && exit 0
+
+# Repo checkout / full install already ships node_modules — nothing to do.
+if [ -f "$ROOT/node_modules/better-sqlite3/package.json" ]; then
+  cp "$ROOT/package.json" "$DATA/package.json"
+  exit 0
+fi
 
 STAGE="$DATA/.staging"
 rm -rf "$STAGE"

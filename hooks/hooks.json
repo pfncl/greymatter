@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap-deps.sh\" \"${CLAUDE_PLUGIN_ROOT}\" \"${CLAUDE_PLUGIN_DATA}\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap-deps.sh\"",
             "async": false,
             "timeout": 180000
           }

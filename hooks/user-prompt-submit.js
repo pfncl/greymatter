@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Universal IF-THEN UserPromptSubmit matcher.
 //
