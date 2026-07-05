@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Last-mile validator + persister for /dopamine. The slash command drives the
 // conversation; this helper validates the collected fields and inserts the

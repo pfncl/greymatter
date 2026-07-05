@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Last-mile validator + persister for /oxytocin. Adds, updates, or reinforces
 // a relational force. Looks up existing forces by name for update/reinforce.

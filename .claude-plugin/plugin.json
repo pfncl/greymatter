@@ -1,7 +1,7 @@
 {
   "name": "greymatter",
   "description": "Unified code + documentation knowledge graph with conversation recall, behavioral signals, and safety hooks",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "mcpServers": {
     "greymatter": {
       "command": "node",

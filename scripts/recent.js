@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // On-demand query: "what did we do on <project> last time?"
 // Returns structured raw material — sessions, files, decisions, optional git log —

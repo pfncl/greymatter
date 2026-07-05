@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/resolve-deps');
 
 const path = require('path');
 const fs = require('fs');

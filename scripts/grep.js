@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/resolve-deps');
 
 // Project-aware grep — searches all files in known project directories.
 // Discovers projects from graph.db instead of DIR files.

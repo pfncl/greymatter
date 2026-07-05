@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Stopword management CLI for greymatter memory.db search filtering.
 // Terms promoted to stopwords are excluded from FTS5 queries in searchConversations.

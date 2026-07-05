@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 // Scan driver for test-alerts. The CLI wrapper (shebang, parseArgs, usage,
 // cli, require.main === module) is added in Chunk 5. This chunk keeps the

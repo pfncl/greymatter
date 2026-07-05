@@ -1,4 +1,5 @@
 'use strict';
+require('../lib/resolve-deps');
 
 // Pattern classifier — categorize files by which variant of a pattern they use.
 // Discovers projects from graph.db instead of DIR files.

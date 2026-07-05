@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('../lib/resolve-deps');
 
 /**
  * Schema Scout — Live SQLite database documentation generator.

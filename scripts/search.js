@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+require('../lib/resolve-deps');
 
 const path = require('path');
 const { MemoryDB } = require('../lib/memory-db');
