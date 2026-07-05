@@ -497,6 +497,19 @@ function main() {
   // --force is documented in README/docs since the beginning but was never
   // wired into the CLI — hashes always short-circuited re-extraction.
   const forceAll = args.includes('--force');
+
+  // Warn (don't fail) on unrecognized --flags — a typo like --forse or --proj
+  // otherwise silently no-ops and the scan runs with unintended defaults.
+  const KNOWN_FLAGS = new Set([
+    '--db', '--memory-db', '--seed-aliases', '--force',
+    '--dir', '--name', '--workspace',
+  ]);
+  for (const a of args) {
+    if (a.startsWith('--') && !KNOWN_FLAGS.has(a)) {
+      process.stderr.write(`Warning: unknown flag '${a}' ignored.\n`);
+    }
+  }
+
   const pairs = [];
 
   if (args.includes('--dir')) {
@@ -524,9 +537,30 @@ function main() {
   const config = loadConfig();
 
   for (const { dir, name } of pairs) {
+    // Refuse to clobber: if this name already maps to a *different* root, the
+    // existing project's graph would be silently re-extracted on top of and its
+    // root repointed. Stop unless --force makes the repoint explicit.
+    const existingRoot = db.getProjectRoot(name);
+    if (existingRoot && path.resolve(existingRoot) !== path.resolve(dir) && !forceAll) {
+      process.stderr.write(
+        `Error: project '${name}' is already bound to a different root:\n` +
+        `  existing: ${existingRoot}\n` +
+        `  new:      ${dir}\n` +
+        `Refusing to clobber the existing graph. Re-run with --force to repoint ` +
+        `and fully re-extract, or use --name <different-name> to scan this as a ` +
+        `separate project (e.g. for a parallel worktree).\n`
+      );
+      process.exit(1);
+    }
+
     process.stdout.write(`Scanning ${name} (${dir})...\n`);
     const stats = scanProject(dir, name, db, config, { forceAll });
     db.setProjectRoot(name, dir);
+    // Watermark: a whole-project scan (two-pass import resolution) just
+    // completed, so reverse-import edges for this project are now current.
+    // blast-radius compares node timestamps against this to know whether an
+    // empty result is real or merely un-resolved for a same-session file.
+    db.setFullScanAt(name);
     process.stdout.write(`  ${stats.filesScanned} scanned, ${stats.filesSkipped} skipped, ${stats.nodesCreated} nodes, ${stats.edgesCreated} edges\n`);
     if (stats.labelsWritten > 0) {
       process.stdout.write(`  labels: ${name} — ${stats.labelsWritten} labels written via ${stats.detectorCount} detectors\n`);

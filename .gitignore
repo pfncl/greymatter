@@ -11,3 +11,4 @@ docs/superpowers/
 .DS_Store
 .mcp.json
 scripts/ingest-archive.js
+podklady/

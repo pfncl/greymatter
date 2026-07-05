@@ -40,12 +40,32 @@ function formatFind(results) {
 function formatBlastRadius(dependents, file, opts) {
   const inGraph = opts && opts.inGraph;
   const onDisk = opts && opts.onDisk;
+  const projectRoot = (opts && opts.projectRoot) || '<PROJECT_ROOT>';
   if (!dependents || dependents.length === 0) {
     if (onDisk && !inGraph) {
       // File exists on disk but graph has no nodes for it — graph is stale
       // (file written this session, not yet re-scanned). "Nothing depends on"
-      // is misleading; report the staleness explicitly so caller can re-scan.
-      return `(graph stale — "${file}" exists on disk but is not yet indexed; rescan to see dependents)`;
+      // is misleading; report the staleness explicitly.
+      //
+      // Name the EXACT remediation. The trap this closes: reverse-import edges
+      // ("who imports me") are only produced by the whole-project two-pass
+      // resolution in scan.js — re-running --blast-radius or scanning a
+      // subdirectory can NEVER populate them. The rescan must cover the whole
+      // project root so importer and importee land in fileNodeMaps together.
+      return `(graph stale — "${file}" exists on disk but is not yet indexed.\n`
+        + `  Fix: node scan.js --dir ${projectRoot}\n`
+        + `  Must be the whole project root, not a subdirectory — reverse-import `
+        + `edges are resolved in a project-wide two-pass; a scoped rescan will `
+        + `still report stale.)`;
+    }
+    if (opts && opts.reverseMaybeStale) {
+      // Node exists but was touched more recently than the last whole-project
+      // scan — its reverse-import edges may not be resolved yet. Empty here is
+      // NOT authoritative; don't treat the file as safe-to-delete on this basis.
+      return `(no dependents found for "${file}" — but this file was indexed `
+        + `after the last full scan, so reverse-import edges may be incomplete.\n`
+        + `  This is NOT authoritative — do not treat as safe-to-delete.\n`
+        + `  Confirm with: node scan.js --dir ${projectRoot}  (then re-query).`;
     }
     return `(nothing depends on "${file}")`;
   }
@@ -409,7 +429,21 @@ function main() {
       const inGraph = queries.getFileNodes(project, file).length > 0;
       let onDisk = false;
       try { require('fs').accessSync(file); onDisk = true; } catch { /* fall through */ }
-      process.stdout.write(formatBlastRadius(radius, file, { inGraph, onDisk }) + '\n');
+      const projectRoot = db.getProjectRoot(project) || null;
+      // Reverse-edge trust check: an empty radius on an in-graph file means
+      // either genuinely nothing depends on it, OR its importers were never
+      // two-pass-resolved against it (file created/edited this session, no full
+      // scan since). Distinguish via the watermark: if the file's newest node
+      // is more recent than — or exists without — the last whole-project scan,
+      // treat the empty result as possibly incomplete, not authoritative.
+      const scanState = db.getScanState(project);
+      const lastFullScanAt = scanState && scanState.last_full_scan_at;
+      const nodeTime = inGraph ? db.getFileNewestNodeTime(project, file) : null;
+      const reverseMaybeStale = inGraph && nodeTime != null
+        && (!lastFullScanAt || nodeTime > lastFullScanAt);
+      process.stdout.write(
+        formatBlastRadius(radius, file, { inGraph, onDisk, projectRoot, reverseMaybeStale }) + '\n'
+      );
 
     } else if (command === '--flow') {
       const file = positional(args, '--flow');

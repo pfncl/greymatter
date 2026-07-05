@@ -182,7 +182,26 @@ function main() {
     if (st.size === 0) return;
   } catch { return; }
 
-  const blast = summarizeBlastRadius(safeRun([QUERY, '--blast-radius', rel, '--project', proj.name]));
+  let blast = summarizeBlastRadius(safeRun([QUERY, '--blast-radius', rel, '--project', proj.name]));
+
+  // Stale-graph sentinel: the file was written this session and has no nodes
+  // yet, so blast-radius under-reports (reverse-import edges only exist after a
+  // whole-project two-pass scan — a scoped rescan or a re-run of --blast-radius
+  // can't produce them). Elevate this to an unambiguous action item with the
+  // concrete root the hook already knows, so the agent runs the ONE command
+  // that works instead of discovering it over several failed attempts.
+  const graphStale = blast && blast.includes('graph stale');
+  if (graphStale) {
+    blast = `⚠ blast-radius unavailable — graph is stale for this same-session file.\n`
+      + `  Run: node '${QUERY.replace(/scripts\/query\.js$/, 'scripts/scan.js')}' --dir '${proj.root}'\n`
+      + `  (whole project root, not a subdirectory — reverse-import edges resolve project-wide.)`;
+  }
+  // Second staleness shape: node exists but was indexed after the last full
+  // scan, so query.js already emitted a "reverse-import edges may be incomplete"
+  // warning. Keep its text (it's already actionable) but suppress the
+  // dependents-may-break framing below, which assumes a real dependent list.
+  const reverseStale = blast && blast.includes('reverse-import edges may be incomplete');
+  const staleBlast = graphStale || reverseStale;
 
   // Textual reference grep — basename only. Catches slash commands, READMEs,
   // plan docs, rules files that mention the file by path or name.
@@ -206,7 +225,11 @@ function main() {
   parts.push(`greymatter: post-edit dependency check on \`${proj.name}/${rel}\``);
   if (blast) parts.push('\n[blast-radius]\n' + blast);
   if (grep) parts.push('\n[textual references]\n' + grep);
-  parts.push('\nIf this edit changes contracts (renames, signature changes, deletions), the dependents above may break or drift.');
+  // The "dependents may break" framing only makes sense when blast lists real
+  // dependents — not when it's the stale-graph action item.
+  if (!staleBlast) {
+    parts.push('\nIf this edit changes contracts (renames, signature changes, deletions), the dependents above may break or drift.');
+  }
 
   let body = parts.join('\n');
   if (body.length > MAX_CONTEXT_CHARS) {
